@@ -2752,6 +2752,9 @@ fn bundled_integration_assets_report_session_refs() {
     assert!(PI_EXTENSION_ASSET.contains("ctx?.mode !== \"tui\""));
     assert!(PI_EXTENSION_ASSET.contains("pane.report_agent_session"));
     assert!(PI_EXTENSION_ASSET.contains("pane.report_agent\""));
+    assert!(PI_EXTENSION_ASSET.contains("pane.report_metadata"));
+    assert!(PI_EXTENSION_ASSET.contains("pi_session"));
+    assert!(PI_EXTENSION_ASSET.contains("pi.on(\"session_info_changed\""));
     assert!(PI_EXTENSION_ASSET.contains("pi.on(\"agent_start\""));
     assert!(PI_EXTENSION_ASSET.contains("pi.on(\"agent_settled\""));
     assert!(!PI_EXTENSION_ASSET.contains("pi.on(\"session_shutdown\""));
