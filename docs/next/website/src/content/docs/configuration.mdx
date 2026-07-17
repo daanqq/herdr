@@ -467,10 +467,16 @@ Sound notifications play through the local Herdr client. Custom sounds must be m
 
 ```toml
 [ui.sound]
+backend = "audio"
 path = "sounds/notification.mp3"
 done_path = "sounds/done.mp3"
 request_path = "sounds/request.mp3"
 ```
+
+`backend` accepts `audio`, `bell`, or `both`. `audio` uses the existing mp3
+player path, `bell` emits BEL to the outer terminal, and `both` uses both
+outputs. Terminal bell behavior is controlled by the outer terminal; for
+example, VS Code requires `terminal.integrated.enableBell`.
 
 `path` sets one sound for all sound notifications. `done_path` and `request_path` override only the finished and needs-input sounds.
 

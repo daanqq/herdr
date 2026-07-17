@@ -10,6 +10,8 @@ use super::io::resolve_config_relative_path;
 #[serde(default)]
 pub struct SoundConfig {
     pub enabled: bool,
+    /// Sound delivery backend. Default: audio.
+    pub backend: SoundBackend,
     /// Optional mp3 file path used for all notification sounds.
     /// Relative paths are resolved from the config file's directory.
     pub path: Option<PathBuf>,
@@ -20,6 +22,25 @@ pub struct SoundConfig {
     /// Relative paths are resolved from the config file's directory.
     pub request_path: Option<PathBuf>,
     pub agents: AgentSoundOverrides,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SoundBackend {
+    #[default]
+    Audio,
+    Bell,
+    Both,
+}
+
+impl SoundBackend {
+    pub(crate) fn uses_audio(self) -> bool {
+        matches!(self, Self::Audio | Self::Both)
+    }
+
+    pub(crate) fn uses_bell(self) -> bool {
+        matches!(self, Self::Bell | Self::Both)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -153,6 +174,7 @@ impl Default for SoundConfig {
     fn default() -> Self {
         Self {
             enabled: true,
+            backend: SoundBackend::Audio,
             path: None,
             done_path: None,
             request_path: None,
@@ -201,6 +223,7 @@ mod tests {
         let toml = r#"
 [ui.sound]
 enabled = true
+backend = "both"
 path = "sounds/all.mp3"
 done_path = "sounds/done.mp3"
 request_path = "/tmp/request.mp3"
@@ -211,6 +234,7 @@ claude = "on"
 "#;
         let config: Config = toml::from_str(toml).unwrap();
         assert!(config.ui.sound.enabled);
+        assert_eq!(config.ui.sound.backend, SoundBackend::Both);
         assert_eq!(config.ui.sound.path, Some(PathBuf::from("sounds/all.mp3")));
         assert_eq!(
             config.ui.sound.done_path,
@@ -223,6 +247,18 @@ claude = "on"
         assert_eq!(config.ui.sound.agents.droid, AgentSoundSetting::Off);
         assert_eq!(config.ui.sound.agents.claude, AgentSoundSetting::On);
         assert_eq!(config.ui.sound.agents.pi, AgentSoundSetting::Default);
+    }
+
+    #[test]
+    fn sound_backend_defaults_to_audio_and_selects_outputs() {
+        let config: Config = toml::from_str("[ui.sound]\nenabled = true\n").unwrap();
+        assert_eq!(config.ui.sound.backend, SoundBackend::Audio);
+        assert!(SoundBackend::Audio.uses_audio());
+        assert!(!SoundBackend::Audio.uses_bell());
+        assert!(!SoundBackend::Bell.uses_audio());
+        assert!(SoundBackend::Bell.uses_bell());
+        assert!(SoundBackend::Both.uses_audio());
+        assert!(SoundBackend::Both.uses_bell());
     }
 
     #[test]

@@ -417,6 +417,8 @@ const DEFAULT_CONFIG: &str = r##"# herdr configuration
 # Play sounds when agents change state in background workspaces
 [ui.sound]
 # enabled = true
+# audio = play mp3 through a system audio player; bell = emit terminal BEL; both = do both
+# backend = "audio"
 # Optional custom mp3 sound files. Relative paths are resolved from this config file's directory.
 # path = "sounds/notification.mp3"   # one mp3 file for all sound notifications
 # done_path = "sounds/done.mp3"      # overrides only finished notifications

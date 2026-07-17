@@ -1,8 +1,7 @@
 //! Sound notifications for agent state changes.
 //!
-//! Embeds mp3 files in the binary and plays them via system audio tools.
-//! Uses afplay (macOS), Windows MediaPlayer, or decoder-capable Linux audio
-//! players — no Rust audio dependencies.
+//! Emits the host terminal bell, plays embedded mp3 files through system audio
+//! tools, or does both according to the local client configuration.
 
 use std::io::Write;
 #[cfg(not(any(windows, target_os = "macos")))]
@@ -43,6 +42,17 @@ pub fn play(sound: Sound, config: &crate::config::SoundConfig) {
         return;
     }
 
+    if config.backend.uses_bell() {
+        let mut stdout = std::io::stdout().lock();
+        if let Err(err) = write_bell(&mut stdout) {
+            warn!(err = %err, "terminal bell playback failed");
+        }
+    }
+
+    if !config.backend.uses_audio() {
+        return;
+    }
+
     let custom_path = config.path_for(sound);
     std::thread::spawn(move || {
         if let Some(path) = custom_path {
@@ -63,6 +73,11 @@ pub fn play(sound: Sound, config: &crate::config::SoundConfig) {
             warn!(sound = ?sound, err = %err, "sound playback failed");
         }
     });
+}
+
+fn write_bell(output: &mut impl Write) -> std::io::Result<()> {
+    output.write_all(b"\x07")?;
+    output.flush()
 }
 
 fn sound_playback_disabled_by_env() -> bool {
@@ -359,6 +374,15 @@ mod tests {
     #[test]
     fn temp_sound_paths_are_unique() {
         assert_ne!(temp_sound_path(), temp_sound_path());
+    }
+
+    #[test]
+    fn terminal_bell_is_one_bel_byte() {
+        let mut output = Vec::new();
+
+        write_bell(&mut output).unwrap();
+
+        assert_eq!(output, b"\x07");
     }
 
     #[cfg(not(any(windows, target_os = "macos")))]

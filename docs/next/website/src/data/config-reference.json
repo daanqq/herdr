@@ -1142,6 +1142,17 @@
           "description": "Play sounds when agents change state in background workspaces."
         },
         {
+          "key": "ui.sound.backend",
+          "type": "enum",
+          "default": "\"audio\"",
+          "description": "Choose mp3 audio playback, the outer terminal bell, or both.",
+          "values": [
+            "audio",
+            "bell",
+            "both"
+          ]
+        },
+        {
           "key": "ui.sound.path",
           "type": "path",
           "default": "unset",
