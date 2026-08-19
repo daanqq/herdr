@@ -5,8 +5,8 @@ use serde::{de, Deserialize, Deserializer, Serialize};
 
 use super::{
     ActionKeybinds, BindingConfig, CommandKeybindConfig, IndexedKeybind, Keybinds, SidebarConfig,
-    SoundConfig, TabBarRightEntryConfig, ThemeConfig, DEFAULT_MOBILE_WIDTH_THRESHOLD,
-    DEFAULT_MOUSE_SCROLL_LINES, DEFAULT_SCROLLBACK_LIMIT_BYTES,
+    SoundConfig, TabBarRightEntryConfig, ThemeConfig, DEFAULT_ALT_MOUSE_SCROLL_LINES,
+    DEFAULT_MOBILE_WIDTH_THRESHOLD, DEFAULT_MOUSE_SCROLL_LINES, DEFAULT_SCROLLBACK_LIMIT_BYTES,
 };
 
 pub const MAX_TOAST_DELAY_SECONDS: u64 = 3600;
@@ -871,6 +871,8 @@ pub struct UiConfig {
     pub redraw_on_focus_gained: bool,
     /// Lines to scroll per mouse wheel notch. Default: 3.
     pub mouse_scroll_lines: Option<NonZeroUsize>,
+    /// Lines to scroll per mouse wheel notch while Alt is held. Default: 15.
+    pub alt_mouse_scroll_lines: Option<NonZeroUsize>,
     /// Ask for confirmation before closing a workspace. Default: true.
     pub confirm_close: bool,
     /// Ask for a tab name before creating a new tab. Default: true.
@@ -1113,6 +1115,7 @@ impl Default for UiConfig {
             right_click_passthrough_modifier: RightClickPassthroughModifierConfig::default(),
             redraw_on_focus_gained: true,
             mouse_scroll_lines: None,
+            alt_mouse_scroll_lines: None,
             confirm_close: true,
             prompt_new_tab_name: true,
             prompt_new_workspace_name: false,
@@ -1142,6 +1145,12 @@ impl UiConfig {
         self.mouse_scroll_lines
             .map(NonZeroUsize::get)
             .unwrap_or(DEFAULT_MOUSE_SCROLL_LINES)
+    }
+
+    pub fn alt_mouse_scroll_lines(&self) -> usize {
+        self.alt_mouse_scroll_lines
+            .map(NonZeroUsize::get)
+            .unwrap_or(DEFAULT_ALT_MOUSE_SCROLL_LINES)
     }
 
     pub fn right_click_passthrough_modifiers(&self) -> Option<KeyModifiers> {
@@ -1739,6 +1748,31 @@ mouse_scroll_lines = 1
         let toml = r#"
 [ui]
 mouse_scroll_lines = 0
+"#;
+        assert!(toml::from_str::<Config>(toml).is_err());
+    }
+
+    #[test]
+    fn alt_mouse_scroll_lines_defaults_to_fifteen_and_parses() {
+        let default_config = Config::default();
+        assert_eq!(
+            default_config.ui.alt_mouse_scroll_lines(),
+            DEFAULT_ALT_MOUSE_SCROLL_LINES
+        );
+
+        let toml = r#"
+[ui]
+alt_mouse_scroll_lines = 20
+"#;
+        let config: Config = toml::from_str(toml).unwrap();
+        assert_eq!(config.ui.alt_mouse_scroll_lines(), 20);
+    }
+
+    #[test]
+    fn alt_mouse_scroll_lines_rejects_zero() {
+        let toml = r#"
+[ui]
+alt_mouse_scroll_lines = 0
 "#;
         assert!(toml::from_str::<Config>(toml).is_err());
     }

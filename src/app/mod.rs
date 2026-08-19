@@ -661,6 +661,7 @@ impl App {
             right_click_passthrough: None,
             redraw_on_focus_gained: config.ui.redraw_on_focus_gained,
             mouse_scroll_lines: config.ui.mouse_scroll_lines(),
+            alt_mouse_scroll_lines: config.ui.alt_mouse_scroll_lines(),
             confirm_close: config.ui.confirm_close,
             prompt_new_tab_name: config.ui.prompt_new_tab_name,
             prompt_new_workspace_name: config.ui.prompt_new_workspace_name,
@@ -1505,6 +1506,7 @@ impl App {
                 }
                 self.loaded_host_cursor = config.ui.host_cursor;
                 self.state.mouse_scroll_lines = config.ui.mouse_scroll_lines();
+                self.state.alt_mouse_scroll_lines = config.ui.alt_mouse_scroll_lines();
                 self.state.right_click_passthrough_modifiers =
                     config.ui.right_click_passthrough_modifiers();
                 self.state.confirm_close = config.ui.confirm_close;

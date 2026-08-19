@@ -144,7 +144,7 @@ impl AppState {
         terminal_runtimes: &TerminalRuntimeRegistry,
         mouse: MouseEvent,
     ) -> bool {
-        let lines_per_notch = self.mouse_scroll_lines;
+        let lines_per_notch = self.mouse_scroll_lines_for(mouse.modifiers);
 
         let Some(selection) = self.selection.as_ref() else {
             return false;

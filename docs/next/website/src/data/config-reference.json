@@ -929,6 +929,12 @@
           "description": "Lines to scroll per mouse wheel notch."
         },
         {
+          "key": "ui.alt_mouse_scroll_lines",
+          "type": "integer",
+          "default": "15",
+          "description": "Lines to scroll per mouse wheel notch while Alt is held."
+        },
+        {
           "key": "ui.confirm_close",
           "type": "boolean",
           "default": "true",

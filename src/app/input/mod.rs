@@ -512,7 +512,7 @@ impl App {
                     rt.encode_alternate_scroll(mouse.kind)
                 }
                 Some(crate::pane::WheelRouting::HostScroll) | None => {
-                    let lines_per_notch = self.state.mouse_scroll_lines;
+                    let lines_per_notch = self.state.mouse_scroll_lines_for(mouse.modifiers);
                     match mouse.kind {
                         MouseEventKind::ScrollUp => rt.scroll_up(lines_per_notch),
                         MouseEventKind::ScrollDown => rt.scroll_down(lines_per_notch),

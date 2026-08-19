@@ -317,6 +317,9 @@ const DEFAULT_CONFIG: &str = r##"# herdr configuration
 # Pane scrollback lines to scroll per mouse wheel notch.
 # mouse_scroll_lines = 3
 
+# Pane scrollback lines to scroll per mouse wheel notch while Alt is held.
+# alt_mouse_scroll_lines = 15
+
 # Ask for confirmation before closing a workspace
 # confirm_close = true
 

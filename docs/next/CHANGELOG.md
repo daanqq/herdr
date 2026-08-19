@@ -4,6 +4,7 @@
 
 ### Added
 - Custom themes can now define separate light and dark color overrides when automatic theme switching is enabled. (#837, thanks @aneym)
+- `ui.alt_mouse_scroll_lines` now configures faster pane scrolling while Alt is held, including direct attach clients.
 
 ### Fixed
 - Running named servers now activate remote agent-detection manifests downloaded by another server, preventing stale agent states and `agent explain` output until restart. (#2711)
