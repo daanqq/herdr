@@ -1022,7 +1022,7 @@ mod tests {
         assert!(restore_plan_for_snapshot(&session, false).is_none());
         assert_eq!(
             restore_plan_for_snapshot(&session, true).unwrap().argv,
-            vec!["pi", "--session", pi_session_path.as_str()]
+            vec!["py", "--session", pi_session_path.as_str()]
         );
 
         let unsupported_path = super::super::snapshot::PaneAgentSessionSnapshot {
@@ -1052,7 +1052,7 @@ mod tests {
             .expect("first restore should get a plan");
         assert_eq!(
             first.argv,
-            vec!["pi", "--session", pi_session_path.as_str()]
+            vec!["py", "--session", pi_session_path.as_str()]
         );
         assert!(take_restore_plan_for_snapshot(&session, true, &mut resumed).is_none());
     }
