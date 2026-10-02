@@ -217,6 +217,10 @@ impl ClientShellState {
         let pending_agent_reveal = self
             .pending_agent_reveal
             .take_if(|(target_endpoint, _)| target_endpoint == endpoint_id);
+        let pending_agent_context_menu = self.pending_agent_context_menu.take_if(|menu| {
+            matches!(&menu.target, ClientContextMenuTarget::AgentTab(target)
+                if &target.workspace.endpoint_id == endpoint_id)
+        });
         let agent_body_height = self.hits.agent_body.height;
         let Some(endpoint) = self
             .endpoints
@@ -240,6 +244,9 @@ impl ClientShellState {
             self.pending_pane_surface = None;
         }
         self.apply_active_snapshot(snapshot, generation);
+        if let Some(menu) = pending_agent_context_menu {
+            self.show_agent_context_menu(menu);
+        }
         if switching_endpoint {
             // The aggregate agent list belongs to the client, not one endpoint.
             self.agent_scroll = agent_scroll;

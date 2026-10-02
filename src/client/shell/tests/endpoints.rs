@@ -73,6 +73,204 @@ fn state_with_remote() -> (ClientShellState, ClientEndpointId) {
     (state, endpoint_id)
 }
 
+fn right_click_remote_agent(state: &mut ClientShellState, remote: &ClientEndpointId) {
+    let mut projected = state
+        .endpoints
+        .iter()
+        .find(|endpoint| &endpoint.endpoint_id == remote)
+        .unwrap()
+        .snapshot
+        .clone()
+        .unwrap();
+    projected
+        .agents
+        .push(agent("remote-agent", AgentStatus::Idle, 1));
+    state.set_endpoint_snapshot(remote, projected);
+    state.compose(106, 30).unwrap();
+    let rect = state
+        .hits
+        .endpoint_agents
+        .iter()
+        .find(|(_, endpoint_id, _)| endpoint_id == remote)
+        .unwrap()
+        .0;
+    let opened = state.handle_raw_events(vec![RawInputEvent::Mouse(MouseEvent {
+        kind: MouseEventKind::Down(MouseButton::Right),
+        column: rect.x,
+        row: rect.y,
+        modifiers: KeyModifiers::NONE,
+    })]);
+    assert!(matches!(opened.actions.as_slice(),
+        [ClientShellAction::ActivateEndpoint { endpoint_id, target: None }] if endpoint_id == remote));
+    assert!(state.overlay.is_none());
+}
+
+#[test]
+fn agent_context_menu_closes_on_the_selected_endpoint_even_with_identical_tab_ids() {
+    for confirm in [false, true] {
+        for collapsed in [false, true] {
+            let (mut state, remote) = state_with_remote();
+            state.config.confirm_close = confirm;
+            state.sidebar_collapsed = collapsed;
+            right_click_remote_agent(&mut state, &remote);
+            assert!(state.activate_endpoint_projection(&remote));
+            assert!(matches!(
+                state.overlay,
+                Some(ClientShellOverlay::ContextMenu(_))
+            ));
+            let mut next_surface = surface();
+            next_surface.boot_id = "remote-boot".into();
+            state.set_pane_surface(next_surface);
+            state.compose(106, 30).unwrap();
+            assert_eq!(state.hits.context_menu_rows.len(), 1);
+            let mut close = state.handle_input_bytes(b"\r");
+            if confirm {
+                assert!(matches!(
+                    state.overlay,
+                    Some(ClientShellOverlay::ConfirmClose(_))
+                ));
+                assert!(close.actions.iter().all(|action| !matches!(action,
+                    ClientShellAction::Endpoint { request, .. }
+                        if matches!(request.method, crate::api::schema::Method::TabClose(_)))));
+                close = state.handle_input_bytes(b"\r");
+            }
+            assert!(close.actions.iter().any(|action| matches!(action,
+                ClientShellAction::Endpoint { endpoint_id, boot_id, request }
+                    if endpoint_id == &remote && boot_id == "remote-boot"
+                        && matches!(&request.method, crate::api::schema::Method::TabClose(target)
+                            if target.tab_id == "tab_1"))));
+            assert!(close.actions.iter().all(|action| !matches!(action,
+                ClientShellAction::Endpoint { endpoint_id, .. } if endpoint_id.is_local())));
+        }
+    }
+}
+
+#[test]
+fn local_agent_context_menu_can_cancel_a_pending_remote_switch() {
+    let (mut state, remote) = state_with_remote();
+    let mut local = snapshot();
+    local
+        .agents
+        .push(agent("local-agent", AgentStatus::Idle, 1));
+    state.set_snapshot(Box::new(local));
+    right_click_remote_agent(&mut state, &remote);
+    let rect = state
+        .hits
+        .endpoint_agents
+        .iter()
+        .find(|(_, endpoint_id, _)| endpoint_id.is_local())
+        .unwrap()
+        .0;
+    let opened = state.handle_raw_events(vec![RawInputEvent::Mouse(MouseEvent {
+        kind: MouseEventKind::Down(MouseButton::Right),
+        column: rect.x,
+        row: rect.y,
+        modifiers: KeyModifiers::NONE,
+    })]);
+    assert!(matches!(
+        opened.actions.as_slice(),
+        [ClientShellAction::ActivateEndpoint {
+            endpoint_id: ClientEndpointId::Local,
+            target: None
+        }]
+    ));
+    assert!(state.activate_endpoint_projection(&ClientEndpointId::Local));
+    let Some(ClientShellOverlay::ContextMenu(menu)) = &state.overlay else {
+        panic!("local agent context menu must open");
+    };
+    assert!(
+        matches!(&menu.target, ClientContextMenuTarget::AgentTab(target)
+        if target.workspace.endpoint_id.is_local())
+    );
+    assert!(state.pending_agent_context_menu.is_none());
+}
+
+#[test]
+fn pending_agent_context_menu_does_not_replace_a_new_menu_or_close_confirmation() {
+    for confirm in [false, true] {
+        let (mut state, _) = state_with_remote();
+        state.config.confirm_close = confirm;
+        let mut local = snapshot();
+        local
+            .agents
+            .push(agent("local-agent", AgentStatus::Idle, 1));
+        state.set_snapshot(Box::new(local));
+        state.open_agent_context_menu(
+            ClientEndpointId::Local,
+            "pane_1".into(),
+            2,
+            20,
+            &mut ClientShellInput::default(),
+        );
+        assert!(state.pending_agent_context_menu.is_some());
+        if confirm {
+            state.request_tab_close("tab_1".into(), &mut ClientShellInput::default());
+        } else {
+            state.open_tab_context_menu("tab_1".into(), 30, 1);
+        }
+        assert!(state.activate_endpoint_projection(&ClientEndpointId::Local));
+        if confirm {
+            assert!(matches!(
+                state.overlay,
+                Some(ClientShellOverlay::ConfirmClose(_))
+            ));
+        } else {
+            assert!(matches!(
+                state.overlay,
+                Some(ClientShellOverlay::ContextMenu(ClientContextMenuOverlay {
+                    target: ClientContextMenuTarget::Tab { .. },
+                    ..
+                }))
+            ));
+        }
+        assert!(state.pending_agent_context_menu.is_none());
+    }
+}
+
+#[test]
+fn pending_agent_context_menu_is_cancelled_by_another_selection_or_reconnection() {
+    for change in ["workspace", "machine", "reconnected", "missing"] {
+        let (mut state, remote) = state_with_remote();
+        right_click_remote_agent(&mut state, &remote);
+        match change {
+            "workspace" => {
+                state.focus_or_activate(
+                    ClientEndpointId::Local,
+                    ClientEndpointFocusTarget::Workspace("ws_1".into()),
+                    &mut ClientShellInput::default(),
+                );
+            }
+            "machine" => {
+                state.activate_endpoint(remote.clone(), &mut ClientShellInput::default());
+            }
+            "reconnected" => {
+                state
+                    .endpoints
+                    .iter_mut()
+                    .find(|endpoint| endpoint.endpoint_id == remote)
+                    .unwrap()
+                    .snapshot_generation = Some(2);
+            }
+            "missing" => {
+                state
+                    .endpoints
+                    .iter_mut()
+                    .find(|endpoint| endpoint.endpoint_id == remote)
+                    .unwrap()
+                    .snapshot
+                    .as_mut()
+                    .unwrap()
+                    .tabs
+                    .clear();
+            }
+            _ => unreachable!(),
+        }
+        assert!(state.activate_endpoint_projection(&remote));
+        assert!(state.overlay.is_none());
+        assert!(state.pending_agent_context_menu.is_none());
+    }
+}
+
 #[cfg(windows)]
 #[test]
 fn system_notification_clicks_keep_endpoint_and_boot_identity() {

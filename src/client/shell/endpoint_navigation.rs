@@ -232,6 +232,7 @@ impl ClientShellState {
     ) -> bool {
         self.pending_workspace_highlight = None;
         self.pending_agent_reveal = None;
+        self.pending_agent_context_menu = None;
         let online = self.endpoint_is_online(&endpoint_id);
         if !online && !endpoint_id.is_local() {
             let label = self.endpoint_label(&endpoint_id).to_owned();
@@ -262,6 +263,7 @@ impl ClientShellState {
         }
         self.pending_workspace_highlight = None;
         self.pending_agent_reveal = None;
+        self.pending_agent_context_menu = None;
         let online = self.endpoint_is_online(&endpoint_id);
         if !online && !endpoint_id.is_local() {
             let label = self.endpoint_label(&endpoint_id).to_owned();

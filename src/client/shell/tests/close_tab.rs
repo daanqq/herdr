@@ -44,6 +44,48 @@ fn request_close(state: &mut ClientShellState, menu: bool) -> ClientShellInput {
     }
 }
 
+fn agent_close_state(confirm: bool, tab_count: usize) -> ClientShellState {
+    let mut state = close_state(confirm, tab_count);
+    let mut projected = state.snapshot.as_deref().unwrap().clone();
+    projected.agents.push(ClientShellAgent {
+        pane_id: "pane_1".into(),
+        workspace_id: "ws_1".into(),
+        tab_id: "tab_1".into(),
+        name: Some("test-agent".into()),
+        display_agent: None,
+        agent: Some("pi".into()),
+        title: None,
+        terminal_title: None,
+        terminal_title_stripped: None,
+        agent_status: AgentStatus::Idle,
+        state_change_seq: 1,
+        state_labels: Vec::new(),
+        tokens: Vec::new(),
+        focused: true,
+    });
+    state.set_snapshot(Box::new(projected));
+    state.compose(106, 24).unwrap();
+    state
+}
+
+fn open_agent_menu(state: &mut ClientShellState) {
+    let rect = state.hits.agents[0].0;
+    let opened = state.handle_raw_events(vec![RawInputEvent::Mouse(MouseEvent {
+        kind: MouseEventKind::Down(MouseButton::Right),
+        column: rect.x,
+        row: rect.y,
+        modifiers: KeyModifiers::empty(),
+    })]);
+    assert!(opened.repaint);
+    assert!(opened.actions.is_empty());
+    state.compose(106, 24).unwrap();
+    assert_eq!(state.hits.context_menu_rows.len(), 1);
+    let Some(ClientShellOverlay::ContextMenu(menu)) = &state.overlay else {
+        panic!("agent context menu must open");
+    };
+    assert_eq!(menu.items()[0].label, "Close");
+}
+
 fn assert_no_close(outcome: &ClientShellInput) {
     assert!(outcome.requests.is_empty());
     assert!(outcome.actions.iter().all(|action| {
@@ -63,6 +105,97 @@ fn assert_tab_close(outcome: &ClientShellInput) {
         .filter(|method| !matches!(method, Method::TabFocus(_)))
         .collect::<Vec<_>>();
     assert!(matches!(methods.as_slice(), [Method::TabClose(target)] if target.tab_id == "tab_1"));
+}
+
+#[test]
+fn agent_context_menu_close_uses_the_tab_close_flow() {
+    for (confirm, tabs) in [(false, 1), (false, 2), (true, 1), (true, 2)] {
+        let mut state = agent_close_state(confirm, tabs);
+        open_agent_menu(&mut state);
+        let close_row = state.hits.context_menu_rows[0].0;
+        let requested = click(&mut state, close_row);
+        assert!(requested.actions.iter().all(|action| !matches!(action,
+            ClientShellAction::Endpoint { request, .. } if matches!(request.method, Method::TabFocus(_)))));
+        if confirm && tabs == 1 {
+            assert_no_close(&requested);
+            assert!(matches!(
+                state.overlay,
+                Some(ClientShellOverlay::ConfirmClose(_))
+            ));
+            state.compose(106, 24).unwrap();
+            let primary = state.hits.overlay_primary;
+            assert_tab_close(&click(&mut state, primary));
+        } else {
+            assert_tab_close(&requested);
+        }
+        assert!(state.overlay.is_none());
+    }
+}
+
+#[test]
+fn agent_context_menu_close_targets_the_agents_tab_not_the_focused_tab_or_pane() {
+    let mut state = agent_close_state(true, 2);
+    let mut projected = state.snapshot.as_deref().unwrap().clone();
+    projected.agents[0].tab_id = "tab_2".into();
+    projected.agents[0].focused = false;
+    projected.panes[0].tab_id = "tab_2".into();
+    let mut sibling = projected.panes[0].clone();
+    sibling.pane_id = "pane_2".into();
+    projected.panes.push(sibling);
+    state.set_snapshot(Box::new(projected));
+    state.compose(106, 24).unwrap();
+    open_agent_menu(&mut state);
+    let close_row = state.hits.context_menu_rows[0].0;
+    let closed = click(&mut state, close_row);
+    let methods = closed
+        .actions
+        .iter()
+        .filter_map(|action| match action {
+            ClientShellAction::Endpoint { request, .. } => Some(&request.method),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert!(matches!(methods.as_slice(), [Method::TabClose(close)]
+        if close.tab_id == "tab_2"));
+}
+
+#[test]
+fn agent_context_menu_close_rejects_stale_targets() {
+    for change in ["missing", "moved", "reconnected", "offline"] {
+        let mut state = agent_close_state(false, 2);
+        open_agent_menu(&mut state);
+        let mut projected = state.snapshot.as_deref().unwrap().clone();
+        match change {
+            "missing" => projected.tabs.retain(|tab| tab.tab_id != "tab_1"),
+            "moved" => projected.tabs[0].workspace_id = "different_workspace".into(),
+            "reconnected" => state.endpoints[0].snapshot_generation = Some(2),
+            "offline" => state.mark_endpoint_disconnected(&ClientEndpointId::Local),
+            _ => unreachable!(),
+        }
+        if matches!(change, "missing" | "moved") {
+            state.set_snapshot(Box::new(projected));
+        }
+        assert_no_close(&state.handle_input_bytes(b"\r"));
+        assert!(state.overlay.is_none());
+    }
+}
+
+#[test]
+fn agent_context_menu_and_close_confirmation_can_be_cancelled() {
+    for confirm in [false, true] {
+        let mut state = agent_close_state(confirm, 1);
+        open_agent_menu(&mut state);
+        if confirm {
+            let close_row = state.hits.context_menu_rows[0].0;
+            assert_no_close(&click(&mut state, close_row));
+            assert!(matches!(
+                state.overlay,
+                Some(ClientShellOverlay::ConfirmClose(_))
+            ));
+        }
+        assert_no_close(&state.handle_input_bytes(b"\x1b"));
+        assert!(state.overlay.is_none());
+    }
 }
 
 #[test]

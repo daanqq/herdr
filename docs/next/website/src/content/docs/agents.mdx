@@ -5,6 +5,8 @@ description: See which coding agents work with Herdr, either supported by Herdr 
 
 Herdr is built for running more than one coding agent at a time. Each agent stays in a real terminal pane with its shell, logs, prompts, and running processes intact. Herdr tracks which panes contain agents, rolls their state up to tabs and workspaces, and lets you jump straight to the pane that needs attention instead of polling every terminal by hand.
 
+Right-click an agent in the sidebar and choose **Close** to close its terminal tab, using the same confirmation behavior as the tab's **Close** menu item. This closes every pane and process in that tab, not just the selected agent. On the current machine, closing another agent's tab leaves your current tab selected. For an agent on another connected machine, Herdr switches to that machine before opening the menu.
+
 To coordinate agents from scripts or from another agent, see [Agent automation](/docs/agent-automation/).
 
 ## Supported agents

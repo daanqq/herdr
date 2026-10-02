@@ -542,6 +542,7 @@ pub(super) enum ClientContextMenuTarget {
         tab_id: String,
         workspace_id: String,
     },
+    AgentTab(ClientTabCloseConfirmation),
     Pane {
         pane_id: String,
         workspace_id: String,
@@ -885,6 +886,7 @@ pub(crate) struct ClientShellState {
     pub(super) workspace_scroll: usize,
     pub(super) agent_scroll: usize,
     pub(super) pending_agent_reveal: Option<(ClientEndpointId, String)>,
+    pub(super) pending_agent_context_menu: Option<ClientContextMenuOverlay>,
     pub(super) tab_scroll: usize,
     pub(super) mobile_switcher_scroll: usize,
     pub(super) reveal_focused_workspace: bool,
@@ -1050,6 +1052,7 @@ impl ClientShellState {
             workspace_scroll: 0,
             agent_scroll: 0,
             pending_agent_reveal: None,
+            pending_agent_context_menu: None,
             tab_scroll: 0,
             mobile_switcher_scroll: 0,
             reveal_focused_workspace: true,
@@ -1258,6 +1261,7 @@ impl ClientShellState {
         self.endpoint_error_deadline = None;
         self.navigate_workspace_id = None;
         self.pending_workspace_highlight = None;
+        self.pending_agent_context_menu = None;
         self.overlay = self
             .config
             .startup_onboarding

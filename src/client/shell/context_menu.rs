@@ -50,6 +50,7 @@ impl ClientContextMenuOverlay {
                 item("Rename", Action::Rename),
                 item("Close", Action::Close),
             ],
+            ClientContextMenuTarget::AgentTab(_) => vec![item("Close", Action::Close)],
             ClientContextMenuTarget::Pane {
                 source_pane_id,
                 has_manual_label,
@@ -142,6 +143,72 @@ impl ClientShellState {
         }));
     }
 
+    pub(super) fn open_agent_context_menu(
+        &mut self,
+        endpoint_id: ClientEndpointId,
+        pane_id: String,
+        x: u16,
+        y: u16,
+        outcome: &mut ClientShellInput,
+    ) {
+        let Some(agent) = self
+            .endpoints
+            .iter()
+            .find(|endpoint| endpoint.endpoint_id == endpoint_id)
+            .and_then(|endpoint| endpoint.snapshot.as_deref())
+            .and_then(|snapshot| {
+                snapshot
+                    .agents
+                    .iter()
+                    .find(|agent| agent.pane_id == pane_id)
+            })
+        else {
+            return;
+        };
+        let tab_id = agent.tab_id.clone();
+        let Some(workspace) = self.navigation_target(&endpoint_id, &agent.workspace_id) else {
+            return;
+        };
+        let menu = ClientContextMenuOverlay {
+            target: ClientContextMenuTarget::AgentTab(ClientTabCloseConfirmation {
+                tab_id,
+                workspace,
+            }),
+            x,
+            y,
+            highlighted: 0,
+        };
+        let needs_activation = endpoint_id != self.active_endpoint_id
+            || (endpoint_id.is_local()
+                && (self.multi_endpoint_active() || !self.endpoint_is_online(&endpoint_id)));
+        if self.activate_endpoint(endpoint_id, outcome) {
+            if needs_activation {
+                self.pending_agent_context_menu = Some(menu);
+            } else {
+                self.show_agent_context_menu(menu);
+            }
+        }
+        outcome.repaint = true;
+    }
+
+    fn agent_tab_target_valid(&self, target: &ClientTabCloseConfirmation) -> bool {
+        target.workspace.endpoint_id == self.active_endpoint_id
+            && self.navigation_target_valid(&target.workspace)
+            && self.snapshot.as_deref().is_some_and(|snapshot| {
+                snapshot.tabs.iter().any(|tab| {
+                    tab.tab_id == target.tab_id && tab.workspace_id == target.workspace.workspace_id
+                })
+            })
+    }
+
+    pub(super) fn show_agent_context_menu(&mut self, menu: ClientContextMenuOverlay) {
+        if let ClientContextMenuTarget::AgentTab(target) = &menu.target {
+            if self.overlay.is_none() && self.agent_tab_target_valid(target) {
+                self.overlay = Some(ClientShellOverlay::ContextMenu(menu));
+            }
+        }
+    }
+
     pub(super) fn open_pane_context_menu(&mut self, pane_id: String, x: u16, y: u16) {
         let Some(snapshot) = self.snapshot.as_deref() else {
             return;
@@ -201,6 +268,17 @@ impl ClientShellState {
                 tab_id,
                 workspace_id,
             } => self.activate_tab_context_action(tab_id, workspace_id, action, outcome),
+            ClientContextMenuTarget::AgentTab(target) => {
+                if self.agent_tab_target_valid(&target) {
+                    if action == ClientContextMenuAction::Close {
+                        self.request_tab_close(target.tab_id, outcome);
+                    }
+                } else {
+                    self.receive_endpoint_unavailable(
+                        "Close target changed; try closing the tab again".into(),
+                    );
+                }
+            }
             ClientContextMenuTarget::Pane {
                 pane_id,
                 workspace_id,

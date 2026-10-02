@@ -376,6 +376,60 @@ mod tests {
     }
 
     #[test]
+    fn api_tab_close_background_target_preserves_focused_workspace_tab_and_pane() {
+        for target in ["before", "after", "other_last", "other_multiple"] {
+            let event_hub = crate::api::EventHub::default();
+            let (_api_tx, api_rx) = tokio::sync::mpsc::unbounded_channel();
+            let mut app = App::new(
+                &Config::default(),
+                crate::app::AppPolicy::TEST,
+                None,
+                api_rx,
+                event_hub,
+            );
+            let mut background = Workspace::test_new("background");
+            if target == "other_multiple" {
+                background.test_add_tab(Some("another"));
+            }
+            let mut current = Workspace::test_new("current");
+            current.test_add_tab(Some("focused"));
+            current.test_add_tab(Some("after"));
+            current.active_tab = 1;
+            app.state.workspaces = vec![background, current];
+            app.state.active = Some(1);
+            app.state.selected = 1;
+            let workspace_id = app.state.workspaces[1].id.clone();
+            let focused_tab = app.public_tab_id(1, 1).unwrap();
+            let focused_pane = app.state.workspaces[1].focused_pane_id().unwrap();
+            let (workspace_index, tab_index) = match target {
+                "before" => (1, 0),
+                "after" => (1, 2),
+                _ => (0, 0),
+            };
+            let tab_id = app.public_tab_id(workspace_index, tab_index).unwrap();
+            let response = app.handle_tab_close(
+                "req".into(),
+                TabTarget {
+                    tab_id: tab_id.clone(),
+                },
+            );
+            let success: SuccessResponse = serde_json::from_str(&response).unwrap();
+            assert_eq!(success.result, ResponseResult::Ok {}, "{target}");
+            assert!(app.parse_tab_id(&tab_id).is_none(), "{target}");
+            let active_index = app.state.active.unwrap();
+            let workspace = &app.state.workspaces[active_index];
+            assert_eq!(workspace.id, workspace_id, "{target}");
+            assert_eq!(
+                app.public_tab_id(active_index, workspace.active_tab)
+                    .unwrap(),
+                focused_tab,
+                "{target}"
+            );
+            assert_eq!(workspace.focused_pane_id(), Some(focused_pane), "{target}");
+        }
+    }
+
+    #[test]
     fn api_tab_move_reorders_tabs_in_target_workspace() {
         let event_hub = crate::api::EventHub::default();
         let (_api_tx, api_rx) = tokio::sync::mpsc::unbounded_channel();
