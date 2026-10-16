@@ -196,7 +196,7 @@ impl AttachEscapeState {
 
 #[cfg(unix)]
 fn single_attach_key(data: &[u8]) -> Option<crate::input::TerminalKey> {
-    let mut events = crate::raw_input::parse_raw_input_bytes_sync(data);
+    let mut events = crate::raw_input::parse_framed_input(data);
     if events.len() != 1 {
         return None;
     }
@@ -215,19 +215,17 @@ pub(super) fn direct_attach_pixel_mouse(
     crate::protocol::ClientMousePosition,
     u8,
 )> {
-    let (x, y) = crate::input::mouse::parse_report(data)?;
-    let (column, row) = geometry.cell(x, y)?;
-    let cell_report = crate::input::mouse::report_at_cell(data, column, row)?;
-    let mut events = crate::raw_input::parse_raw_input_bytes_sync(&cell_report);
-    if events.len() != 1 {
-        return None;
-    }
-    let crate::raw_input::RawInputEvent::Mouse(mouse) = events.pop()? else {
-        return None;
-    };
+    let report = crate::raw_input::parse_sgr_mouse_report(data)?;
+    let (column, row) = geometry.cell(report.x, report.y)?;
+    let mouse = report.at_cell(column, row);
     Some((
         crate::protocol::ClientMouseKind::from_crossterm(mouse.kind)?,
-        crate::protocol::ClientMousePosition::Pixels { x, y, column, row },
+        crate::protocol::ClientMousePosition::Pixels {
+            x: report.x,
+            y: report.y,
+            column,
+            row,
+        },
         mouse.modifiers.bits(),
     ))
 }
@@ -239,7 +237,7 @@ fn attach_scroll_action(
     mouse_scroll_lines: usize,
     alt_mouse_scroll_lines: usize,
 ) -> Option<AttachSemanticAction> {
-    let mut events = crate::raw_input::parse_raw_input_bytes_sync(data);
+    let mut events = crate::raw_input::parse_framed_input(data);
     if events.len() != 1 {
         return None;
     }
