@@ -232,9 +232,7 @@ pub fn plan(source: &str, agent: &str, session_ref: &AgentSessionRef) -> Option<
             ]
         }
         ("herdr:pi", "pi", AgentSessionRefKind::Path | AgentSessionRefKind::Id) => {
-            // Fork-specific: "py" is the local pi wrapper binary that must be
-            // launched on restore instead of the bare "pi" executable.
-            vec!["py".into(), "--session".into(), session_ref.value.clone()]
+            vec!["pi".into(), "--session".into(), session_ref.value.clone()]
         }
         ("herdr:omp", "omp", AgentSessionRefKind::Path | AgentSessionRefKind::Id) => {
             // omp resume is `-r, --resume=<value>` (ID prefix or path); it has no
@@ -534,7 +532,7 @@ mod tests {
             )
             .unwrap()
             .argv,
-            vec!["py", "--session", pi_session.as_str()]
+            vec!["pi", "--session", pi_session.as_str()]
         );
         assert_eq!(
             plan(

@@ -524,56 +524,6 @@ impl Palette {
         }
     }
 
-    /// Alabaster Dark — tonsky's minimal dark scheme.
-    pub fn alabaster_dark() -> Self {
-        Self {
-            accent: Color::Rgb(205, 151, 75),
-            panel_bg: Color::Rgb(14, 20, 21),
-            sidebar_bg: Color::Reset,
-            active_row_bg: Color::Rgb(29, 35, 36),
-            selection_bg: Color::Rgb(41, 51, 52),
-            surface0: Color::Rgb(29, 35, 36),
-            surface1: Color::Rgb(41, 51, 52),
-            surface_dim: Color::Rgb(52, 63, 64),
-            overlay0: Color::Rgb(86, 107, 109),
-            overlay1: Color::Rgb(112, 139, 141),
-            text: Color::Rgb(206, 206, 206),
-            subtext0: Color::Rgb(160, 168, 168),
-            mauve: Color::Rgb(204, 139, 201),
-            green: Color::Rgb(149, 203, 130),
-            yellow: Color::Rgb(223, 223, 142),
-            red: Color::Rgb(204, 51, 51),
-            blue: Color::Rgb(113, 173, 231),
-            teal: Color::Rgb(108, 191, 196),
-            peach: Color::Rgb(224, 145, 90),
-        }
-    }
-
-    /// Alabaster Light — tonsky's original minimal light scheme.
-    pub fn alabaster_light() -> Self {
-        Self {
-            accent: Color::Rgb(0, 122, 204),
-            panel_bg: Color::Rgb(247, 247, 247),
-            sidebar_bg: Color::Reset,
-            active_row_bg: Color::Rgb(230, 230, 230),
-            selection_bg: Color::Rgb(191, 219, 254),
-            surface0: Color::Rgb(238, 238, 238),
-            surface1: Color::Rgb(221, 221, 221),
-            surface_dim: Color::Rgb(240, 240, 240),
-            overlay0: Color::Rgb(170, 170, 170),
-            overlay1: Color::Rgb(119, 119, 119),
-            text: Color::Rgb(0, 0, 0),
-            subtext0: Color::Rgb(85, 85, 85),
-            mauve: Color::Rgb(122, 62, 157),
-            green: Color::Rgb(68, 140, 39),
-            yellow: Color::Rgb(203, 144, 0),
-            red: Color::Rgb(170, 55, 49),
-            blue: Color::Rgb(50, 92, 192),
-            teal: Color::Rgb(0, 131, 178),
-            peach: Color::Rgb(184, 92, 0),
-        }
-    }
-
     /// Resolve a theme by name. Returns None for unknown names.
     pub fn from_name(name: &str) -> Option<Self> {
         match crate::config::canonical_theme_name(name)? {
@@ -595,8 +545,6 @@ impl Palette {
             "rose-pine" => Some(Self::rose_pine()),
             "rose-pine-dawn" => Some(Self::rose_pine_dawn()),
             "vesper" => Some(Self::vesper()),
-            "alabaster-dark" => Some(Self::alabaster_dark()),
-            "alabaster-light" => Some(Self::alabaster_light()),
             _ => None,
         }
     }

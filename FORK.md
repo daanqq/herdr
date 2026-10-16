@@ -94,48 +94,27 @@ upstream mp3 player path) | `bell` (write BEL to the client's stdout) | `both`.
 - Overlap signals: upstream adds bell or OS notification delivery, a different
   notification backend switch, or moves sound playback out of the client.
 
-### Pi session name metadata
-
-Commit `ca3535cb`. The bundled pi extension reports the pi session name as pane
-metadata token `pi_session` under source `herdr:pi-session-name`, on
-`session_start` and on `session_info_changed`. Sidebar configs can display it
-like any other metadata token.
-
-- Code: `src/integration/assets/pi/herdr-agent-state.ts` (`reportSessionName`).
-- Tests: `src/integration/assets/herdr-agent-state.test.ts`,
-  `pi_integration_reports_session_name_metadata` in `src/integration/tests.rs`.
-- Overlap signals: upstream changes the pi extension, its integration asset
-  version, `pane.report_metadata`, or starts reporting session names itself.
-  Integration asset version rules from `AGENTS.md` apply when merging pi asset
-  edits.
-
-### Pi resume through the `py` wrapper
-
-Commit `0b5f7787`. Session restore resumes pi with `py --session <ref>` instead
-of `pi --session <ref>`; `py` is the user's local pi wrapper binary.
-
-- Code: `("herdr:pi", "pi", ...)` arm of `plan` in `src/agent_resume.rs`.
-- Tests: `src/agent_resume.rs`, `src/persist/restore.rs` (expected argv).
-- Overlap signals: upstream changes the pi resume argv, adds a configurable
-  resume command or binary override (which could replace this hardcoded
-  patch), or changes restore plans.
-
-### Alabaster themes
-
-Commit `d86bbcb4`. Adds built-in themes `alabaster-dark` and `alabaster-light` and pairs
-them as dark/light siblings for appearance-following theme switching.
-
-- Code: `Palette::alabaster_dark`, `Palette::alabaster_light`, and
-  `Palette::from_name` in `src/app/state.rs`; `THEME_NAMES` and
-  `canonical_theme_name` in `src/config/theme.rs`; `sibling_theme_names` in
-  `src/app/mod.rs`; built-in theme list in the default config text in
-  `src/main.rs`.
-- Overlap signals: upstream adds an Alabaster theme under any name, changes the
-  `Palette` fields, or reworks theme name resolution or sibling pairing.
-
 ### Upstream sync skill
 
 Commit `068694dc`. `.agents/skills/herdr-upstream-sync/SKILL.md` is the
 fork's merge-based workflow for syncing with `upstream/master`. The
 `.claude/skills` symlink to `.agents/skills` exposes the repository skills to
 Claude Code. Upstream ships neither, so they should never conflict.
+
+## Moved out of the fork
+
+These features used to be source patches and now live in the user's own
+configuration, so a sync does not touch them. Do not reintroduce them as
+patches; flag upstream changes that would break the external replacement.
+
+- Pi resume through a proxy wrapper: `alias pi=...` in `~/.zshrc.local`.
+  Restore types `pi --session <ref>` into the pane's interactive shell, which
+  expands the alias. Breaks if upstream stops resuming through the shell.
+- Pi session name metadata: `herdr-pi-session-name.ts` beside the managed
+  `herdr-agent-state.ts` in `~/.pi/agent/extensions/` reports `pi_session`
+  through `pane.report_metadata`. Breaks if upstream changes that method or its
+  per-source `seq` rule.
+- Alabaster themes: `[theme.custom.dark]` and `[theme.custom.light]` in
+  `~/.config/herdr/config.toml` override every palette token while
+  `auto_switch` is on. Breaks if upstream renames palette tokens or mode
+  overrides.

@@ -20,8 +20,6 @@ pub const THEME_NAMES: &[&str] = &[
     "rose-pine",
     "rose-pine-dawn",
     "vesper",
-    "alabaster-dark",
-    "alabaster-light",
 ];
 
 pub(crate) fn canonical_theme_name(name: &str) -> Option<&'static str> {
@@ -44,8 +42,6 @@ pub(crate) fn canonical_theme_name(name: &str) -> Option<&'static str> {
         "rose-pine" | "rosepine" => Some("rose-pine"),
         "rose-pine-dawn" | "rosepine-dawn" | "dawn" => Some("rose-pine-dawn"),
         "vesper" => Some("vesper"),
-        "alabaster-dark" => Some("alabaster-dark"),
-        "alabaster-light" => Some("alabaster-light"),
         _ => None,
     }
 }

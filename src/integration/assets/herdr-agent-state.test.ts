@@ -67,16 +67,13 @@ function importFresh(modulePath: string) {
 
 type Handler = (event: unknown, context: unknown) => unknown;
 
-function createExtensionHarness(sessionName?: string) {
+function createExtensionHarness() {
   const handlers = new Map<string, Handler>();
   const eventHandlers = new Map<string, Handler>();
   return {
     handlers,
     eventHandlers,
     pi: {
-      getSessionName() {
-        return sessionName;
-      },
       on(event: string, handler: Handler) {
         handlers.set(event, handler);
       },
@@ -408,48 +405,6 @@ test("Pi reports the session replacement source", async () => {
     .toBe("new");
 });
 
-test("Pi publishes, updates, and clears the session name metadata token", async () => {
-  const requests = await startRecordingServer("pi-session-name");
-  const { handlers, pi } = createExtensionHarness("refactor auth");
-
-  const { default: install } = await importFresh("./pi/herdr-agent-state.ts");
-  install(pi);
-
-  const context = {
-    hasUI: true,
-    mode: "tui",
-    isIdle: () => true,
-    sessionManager: {
-      getSessionFile: () => "/tmp/pi-named.jsonl",
-      getSessionId: () => "pi-named",
-    },
-  };
-  await handlers.get("session_start")?.({ reason: "startup" }, context);
-  handlers.get("session_info_changed")?.({ name: "review auth" }, context);
-  handlers.get("session_info_changed")?.({ name: undefined }, context);
-
-  const metadataRequests = () =>
-    requests.filter(
-      (request) => isRecord(request) && request.method === "pane.report_metadata",
-    );
-  const deadline = Date.now() + 1_000;
-  while (Date.now() < deadline && metadataRequests().length < 3) {
-    await Bun.sleep(5);
-  }
-
-  expect(
-    metadataRequests()
-      .sort(
-        (left, right) =>
-          Number(requestParam(left, "seq")) - Number(requestParam(right, "seq")),
-      )
-      .map((request) => {
-        const tokens = requestParam(request, "tokens");
-        return isRecord(tokens) ? tokens.pi_session : undefined;
-      }),
-  ).toEqual(["refactor auth", "review auth", null]);
-});
-
 test("Pi waits for a replacement session report before publishing state", async () => {
   const recordingSocketPath = join(tmpdir(), `herdr-pi-session-order-${process.pid}.sock`);
   socketPath = recordingSocketPath;
@@ -522,7 +477,6 @@ test("Pi waits for a replacement session report before publishing state", async 
   }
   expect(requests.map((request) => (isRecord(request) ? request.method : undefined))).toEqual([
     "pane.report_agent_session",
-    "pane.report_metadata",
     "pane.report_agent",
   ]);
 });
@@ -712,11 +666,10 @@ async function waitFor(predicate: () => boolean, timeoutMs = 1_000): Promise<voi
 }
 
 function requestState(request: unknown): unknown {
-  return requestParam(request, "state");
-}
-
-function requestParam(request: unknown, name: string): unknown {
-  return isRecord(request) && isRecord(request.params) ? request.params[name] : undefined;
+  if (!isRecord(request) || !isRecord(request.params)) {
+    return undefined;
+  }
+  return request.params.state;
 }
 
 function requestSessionPath(request: unknown): unknown {

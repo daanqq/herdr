@@ -3645,13 +3645,6 @@ fn bundled_integration_asset_versions_match_expected_versions() {
 }
 
 #[test]
-fn pi_integration_reports_session_name_metadata() {
-    assert!(PI_EXTENSION_ASSET.contains("pane.report_metadata"));
-    assert!(PI_EXTENSION_ASSET.contains("pi_session"));
-    assert!(PI_EXTENSION_ASSET.contains("pi.on(\"session_info_changed\""));
-}
-
-#[test]
 fn process_owned_integration_assets_do_not_report_release() {
     for (name, asset) in [
         ("pi", PI_EXTENSION_ASSET),
