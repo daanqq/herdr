@@ -30,6 +30,10 @@ Fetch `upstream master` without pulling. Re-read status, then inspect the ahead/
 
 Before creating a merge commit, follow the repository's commit-message alignment rule. Do not hide a required approval inside an auto-committing `git merge` command.
 
+## Check fork overlaps
+
+Read `FORK.md`. Compare every incoming upstream commit with the overlap signals of each fork feature listed there, including commits that will merge cleanly. For each overlap, follow the `FORK.md` overlap protocol and get the user's decision before merging. Completion criterion: every fork feature in `FORK.md` was checked against the incoming commits, and every overlap has a recorded user decision.
+
 ## Preserve local work
 
 When the worktree or index is dirty, create a clearly named stash including untracked files before integrating upstream. Record the stash identity and keep it until restoration has been verified. Never use a temporary commit for the user's unfinished work.
@@ -40,7 +44,7 @@ The stash is a safety copy, not permission to overwrite files. If stashing fails
 
 Merge the fetched remote-tracking ref, not an unfetched name or a moving network ref. Resolve each conflict from its surrounding code and both parents:
 
-1. Identify the fork behavior and the upstream replacement or architectural change.
+1. Identify the fork behavior from its `FORK.md` entry and the upstream replacement or architectural change. If the conflict is an overlap without a recorded user decision, stop and follow the `FORK.md` overlap protocol; apply the decision instead of steps 2 and 3.
 2. Preserve both when they remain compatible.
 3. Adapt the fork behavior to the new upstream interface when upstream supersedes the old structure.
 4. Search for renamed fields, callers, tests, fixtures, and protocol contracts before declaring the resolution complete.
@@ -68,4 +72,4 @@ Do not fix unrelated pre-existing failures as part of the sync.
 
 ## Report
 
-Report the fetched upstream commit, resulting HEAD, conflicts resolved, local-work restoration status, checks and blockers, and whether anything was pushed. A sync is not complete if unmerged paths remain or preserved work is unaccounted for.
+Report the fetched upstream commit, resulting HEAD, conflicts resolved, fork overlaps with the user's decisions and the matching `FORK.md` updates, local-work restoration status, checks and blockers, and whether anything was pushed. A sync is not complete if unmerged paths remain or preserved work is unaccounted for.
